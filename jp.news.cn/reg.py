@@ -14,4 +14,7 @@ def parse_time(pub_time: str) -> str:
 
 def parse_content(content: str) -> str:
     content = content.replace('pagebreak', '')
-    return content.replace(u'\xa0', '')
+    content = content.replace(u'\u00A0', '')
+    content = content.replace(u'\u2002', '')
+    content = content.replace(u'\u2003', '')
+    return content
