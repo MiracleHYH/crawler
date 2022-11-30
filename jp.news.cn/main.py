@@ -80,7 +80,7 @@ def get_news_list(keyword: str, save_dir: str, use_local: bool = True) -> dict:
                             })
                         pbar.update(1)
         print("Saving %d unique URLs to %s" % (len(news_list), keyword + '.json'))
-        with open('./downloads/' + keyword + '.json', 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(news_list, f, ensure_ascii=False)
     else:
         print('search error, code=%d' % res)
