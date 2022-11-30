@@ -10,7 +10,7 @@ import reg
 
 
 def get_res(base_url: str, data: dict, require_json: bool = False, max_times: int = 3,
-            sep_time: float = 0.5) -> dict | BeautifulSoup | int:
+            sep_time: float = 1.0) -> dict | BeautifulSoup | int:
     res = {}
     url = base_url + '?' + urllib.parse.urlencode(data)
     req = urllib.request.Request(url=url, headers=mkup.headers, method='GET')
@@ -26,14 +26,13 @@ def get_res(base_url: str, data: dict, require_json: bool = False, max_times: in
 
 
 def load_news_list(file_path: str) -> dict:
-    news_list = {}
     with open(file_path, encoding='utf-8') as f:
         news_list = json.load(f)
     return news_list
 
 
-def get_news_list(keyword: str, use_local: bool = True, sep_time: float = 0.5) -> dict:
-    file_path = os.path.join(os.getcwd(), 'downloads', keyword + '.json')
+def get_news_list(keyword: str, save_dir: str, use_local: bool = True) -> dict:
+    file_path = os.path.join(save_dir, keyword + '.json')
     if use_local is True:
         print('use_local=True, Try to use local url storage')
         if os.path.exists(file_path):
@@ -53,7 +52,7 @@ def get_news_list(keyword: str, use_local: bool = True, sep_time: float = 0.5) -
     }
 
     res = get_res(base_url=base_url, data=data, require_json=True)
-    if res is dict:
+    if type(res) is dict:
         content = res.get('content')
         total_page = content.get('pageCount')
         total_news = content.get('resultCount')
@@ -73,7 +72,12 @@ def get_news_list(keyword: str, use_local: bool = True, sep_time: float = 0.5) -
                         print('content has no results, page=%d, skipping ...' % page)
                     else:
                         for news in content.get('results'):
-                            news_list.update({news.get('url'): reg.parse_title(news.get('title'))})
+                            news_list.update({
+                                news.get('url'): (
+                                    reg.parse_title(news.get('title')),
+                                    reg.parse_time(news.get('pubtime'))
+                                )
+                            })
                         pbar.update(1)
         print("Saving %d unique URLs to %s" % (len(news_list), keyword + '.json'))
         with open('./downloads/' + keyword + '.json', 'w', encoding='utf-8') as f:
@@ -84,17 +88,16 @@ def get_news_list(keyword: str, use_local: bool = True, sep_time: float = 0.5) -
     return news_list
 
 
-def get_page_detail(news_list: dict):
+def get_page_detail(news_list: dict, save_dir: str):
     with tqdm(total=len(news_list), desc='Processing', unit='News', leave=True) as pbar:
-        for (news_url, title) in news_list.items():
+        for (news_url, (title, pub_time)) in news_list.items():
             res = get_res(news_url, {})
             if type(res) is BeautifulSoup:
                 try:
-                    doc = res.select('.tupian')[0]
-                    pub_time = reg.parse_time(doc.select('.tupian_dayin')[0].get_text())
-                    content = reg.parse_content(doc.select('#detailContent')[0].get_text())
-                    with open('./downloads/'+title+' '+pub_time+'.txt', 'w', encoding='utf-8') as f:
-                        f.write(pub_time+'\n'+content)
+                    content = reg.parse_content(res.select('#detailContent')[0].get_text())
+                    file_path = os.path.join(save_dir, title + ' ' + pub_time + '.txt')
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(pub_time + '\n' + content)
                 except Exception as e:
                     print('search error, error=%s, url=%s, skipping ...' % (e, news_url))
             else:
@@ -103,8 +106,11 @@ def get_page_detail(news_list: dict):
 
 
 def main(keyword):
-    news_list = get_news_list(keyword=keyword, use_local=True, sep_time=0.5)
-    get_page_detail(news_list)
+    save_dir = os.path.join(os.getcwd(), 'downloads', keyword)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    news_list = get_news_list(keyword=keyword, save_dir=save_dir, use_local=True)
+    get_page_detail(news_list, save_dir=save_dir)
 
 
 if __name__ == '__main__':
