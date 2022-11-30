@@ -102,23 +102,24 @@ def get_page_detail(news_list: dict, save_dir: str):
     print("Getting news's contents ...")
     with tqdm(total=len(news_list), desc='Processing', unit='News', leave=True) as pbar:
         for (news_url, (title, pub_time)) in news_list.items():
-            res = get_res(news_url, {})
-            if type(res) is BeautifulSoup:
-                try:
-                    content = res.select('#detail')
-                    if len(content) == 0:
-                        content = res.select('.fontbox')
-                    if len(content) > 0:
-                        content = reg.parse_content(content[0].get_text())
-                        file_path = os.path.join(save_dir, title + ' ' + pub_time + '.txt')
-                        with open(file_path, 'w', encoding='utf-8') as f:
-                            f.write(pub_time + '\n' + content)
-                    else:
-                        print('new content structure, skipping ...')
-                except Exception as e:
-                    print('search error, error=%s, url=%s, skipping ...' % (e, news_url))
-            else:
-                print('search error, code=%d, url=%s, skipping ...' % (res, news_url))
+            file_path = os.path.join(save_dir, title + ' ' + pub_time + '.txt')
+            if not os.path.exists(file_path):
+                res = get_res(news_url, {})
+                if type(res) is BeautifulSoup:
+                    try:
+                        content = res.select('#detail')
+                        if len(content) == 0:
+                            content = res.select('.fontbox')
+                        if len(content) > 0:
+                            content = reg.parse_content(content[0].get_text())
+                            with open(file_path, 'w', encoding='utf-8') as f:
+                                f.write(pub_time + '\n' + content)
+                        else:
+                            print('new content structure, skipping ...')
+                    except Exception as e:
+                        print('search error, error=%s, url=%s, skipping ...' % (e, news_url))
+                else:
+                    print('search error, code=%d, url=%s, skipping ...' % (res, news_url))
             pbar.update(1)
     print('Downloading finished')
 
