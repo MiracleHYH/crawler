@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 import time
 import os
@@ -10,19 +11,28 @@ import reg
 
 
 def get_res(base_url: str, data: dict, require_json: bool = False, max_times: int = 3,
-            sep_time: float = 1.0) -> dict | BeautifulSoup | int:
+            sep_time: float = 0.5) -> dict | BeautifulSoup | int:
     res = {}
     url = base_url + '?' + urllib.parse.urlencode(data)
     req = urllib.request.Request(url=url, headers=mkup.headers, method='GET')
+    error_code = 0
     for i in range(max_times):
-        res = urllib.request.urlopen(req)
-        time.sleep(sep_time)
-        if res.getcode() == 200:
-            if require_json is True:
-                return json.loads(res.read())
-            else:
-                return BeautifulSoup(res.read().decode('utf-8'), 'lxml')
-    return res.getcode()
+        try:
+            time.sleep(sep_time)
+            res = urllib.request.urlopen(req)
+            if res.getcode() == 200:
+                if require_json is True:
+                    return json.loads(res.read())
+                else:
+                    return BeautifulSoup(res.read().decode('utf-8'), 'lxml')
+        except urllib.error.HTTPError as e:
+            error_code = e.code
+        except urllib.error.URLError as e:
+            return -1
+    if error_code != 0:
+        return error_code
+    else:
+        return res.getcode()
 
 
 def load_news_list(file_path: str) -> dict:
@@ -89,12 +99,13 @@ def get_news_list(keyword: str, save_dir: str, use_local: bool = True) -> dict:
 
 
 def get_page_detail(news_list: dict, save_dir: str):
+    print("Getting news's contents ...")
     with tqdm(total=len(news_list), desc='Processing', unit='News', leave=True) as pbar:
         for (news_url, (title, pub_time)) in news_list.items():
             res = get_res(news_url, {})
             if type(res) is BeautifulSoup:
                 try:
-                    content = reg.parse_content(res.select('#detailContent')[0].get_text())
+                    content = reg.parse_content(res.select('#detail')[0].get_text())
                     file_path = os.path.join(save_dir, title + ' ' + pub_time + '.txt')
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(pub_time + '\n' + content)
