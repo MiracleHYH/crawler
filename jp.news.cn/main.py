@@ -98,12 +98,12 @@ def get_news_list(keyword: str, save_dir: str, use_local: bool = True) -> dict:
     return news_list
 
 
-def get_page_detail(news_list: dict, save_dir: str):
+def get_page_detail(news_list: dict, save_dir: str, force_download: bool = False):
     print("Getting news's contents ...")
     with tqdm(total=len(news_list), desc='Processing', unit='News', leave=True) as pbar:
         for (news_url, (title, pub_time)) in news_list.items():
             file_path = os.path.join(save_dir, title + ' ' + pub_time + '.txt')
-            if not os.path.exists(file_path):
+            if force_download or not os.path.exists(file_path):
                 res = get_res(news_url, {})
                 if type(res) is BeautifulSoup:
                     try:
@@ -129,7 +129,7 @@ def main(keyword):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     news_list = get_news_list(keyword=keyword, save_dir=save_dir, use_local=True)
-    get_page_detail(news_list, save_dir=save_dir)
+    get_page_detail(news_list, save_dir=save_dir, force_download=False)
 
 
 if __name__ == '__main__':
