@@ -112,7 +112,7 @@ def get_page_detail(news_list: dict, save_dir: str, force_download: bool = False
                             content = res.select('.fontbox')
                         if len(content) > 0:
                             content = reg.parse_content(content[0].get_text())
-                            print(content)
+                            # print(content)
                             with open(file_path, 'w', encoding='utf-8') as f:
                                 f.write(pub_time + '\n' + content)
                         else:
